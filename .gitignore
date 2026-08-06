@@ -1,0 +1,25 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+
+# Temp
+.tmp/
+
+# Database
+*.db
+*.db-journal
+
+# Logs
+*.log
+
+# IDE
+.idea/
+.vscode/

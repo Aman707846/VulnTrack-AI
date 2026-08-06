@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: vulntrack-ai-backend
+    runtime: python
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT

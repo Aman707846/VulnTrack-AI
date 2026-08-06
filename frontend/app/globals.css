@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-vt-bg: #050b16;
+  --color-vt-bg-alt: #0d1a2d;
+  --color-vt-panel: rgba(15, 25, 44, 0.72);
+  --color-vt-panel-strong: rgba(15, 26, 47, 0.92);
+  --color-vt-panel-soft: rgba(255, 255, 255, 0.05);
+  --color-vt-line: rgba(168, 188, 255, 0.14);
+  --color-vt-line-strong: rgba(168, 188, 255, 0.28);
+  --color-vt-text: #eff4ff;
+  --color-vt-muted: #93a6cd;
+  --color-vt-accent: #73f0cf;
+  --color-vt-accent-strong: #46d7c3;
+  --color-vt-accent-warm: #ffb36a;
+  --color-vt-accent-cool: #79a8ff;
+  --color-vt-danger: #ff5d76;
+  --color-vt-warning: #ffb95a;
+  --color-vt-safe: #52e0a2;
+  --font-sans: "Avenir Next", "Segoe UI Variable Display", "Segoe UI", "Helvetica Neue", sans-serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    min-height: 100%;
+  }
+
+  body {
+    @apply min-h-screen bg-vt-bg font-sans text-vt-text antialiased;
+    background:
+      radial-gradient(circle at top left, rgba(115, 240, 207, 0.18), transparent 22%),
+      radial-gradient(circle at 82% 12%, rgba(121, 168, 255, 0.16), transparent 18%),
+      radial-gradient(circle at bottom right, rgba(255, 179, 106, 0.14), transparent 24%),
+      linear-gradient(160deg, #030811 0%, #07101e 38%, #0b1730 100%);
+    letter-spacing: -0.01em;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.8), transparent 85%);
+    opacity: 0.34;
+  }
+
+  a {
+    @apply text-inherit no-underline;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  code,
+  pre {
+    @apply font-mono;
+  }
+}
+
+@layer utilities {
+  .vt-grid-overlay {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+}
