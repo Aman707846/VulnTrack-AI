@@ -3,13 +3,56 @@
 import { getApiBaseUrl } from "./config";
 import { analyzeThreat } from "./threat-analyzer";
 
+function formatErrorDetail(detail) {
+  if (!detail) {
+    return "Request failed.";
+  }
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
+
+        const location = Array.isArray(item?.loc) ? item.loc.filter(Boolean).join(".") : "";
+        const message = item?.msg || item?.message || "Invalid request.";
+        return location ? `${location}: ${message}` : message;
+      })
+      .join(" ");
+  }
+
+  if (typeof detail === "object" && detail.message) {
+    return String(detail.message);
+  }
+
+  return "Request failed.";
+}
+
 async function parseResponse(response) {
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      if (!response.ok) {
+        throw new Error(
+          response.status >= 500
+            ? "The backend is unavailable. Start the FastAPI server on port 8001 and try again."
+            : "Request failed.",
+        );
+      }
+    }
+  }
 
   if (!response.ok) {
-    const message = data?.detail || "Request failed.";
-    throw new Error(message);
+    throw new Error(formatErrorDetail(data?.detail));
   }
 
   return data;

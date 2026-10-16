@@ -25,10 +25,14 @@ from backend.app.api.scans import (  # noqa: E402
     _find_cached_file_scan,
 )
 from backend.app.db.base import Base  # noqa: E402
+from backend.app.models.organization import Organization  # noqa: E402
+from backend.app.models.role import Role  # noqa: E402
 from backend.app.models.scan import Scan, ScanStatus, ScanTargetType  # noqa: E402
 from backend.app.models.scan_result import ScanResult  # noqa: E402
 from backend.app.models.user import User  # noqa: E402
 from backend.app.models.vulnerability import Vulnerability  # noqa: E402
+from backend.app.services.organization_service import get_or_create_organization_by_name  # noqa: E402
+from backend.app.services.rbac_service import seed_default_roles  # noqa: E402
 
 
 class ScanCacheTests(unittest.TestCase):
@@ -42,7 +46,15 @@ class ScanCacheTests(unittest.TestCase):
         Base.metadata.drop_all(bind=self.engine)
         Base.metadata.create_all(bind=self.engine)
         self.db: Session = self.SessionLocal()
-        self.user = User(email="cache@test.local", password_hash="hash")
+        seed_default_roles(self.db)
+        org = get_or_create_organization_by_name(self.db, "Cache Org")
+        role = self.db.query(Role).first()
+        self.user = User(
+            email="cache@test.local",
+            password_hash="hash",
+            organization_id=org.id,
+            role_id=role.id,
+        )
         self.db.add(self.user)
         self.db.commit()
         self.db.refresh(self.user)

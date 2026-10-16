@@ -4,10 +4,12 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-if __package__ in (None, ""):
-    project_root = Path(__file__).resolve().parents[2]
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
+project_root = Path(__file__).resolve().parents[2]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+backend_root = Path(__file__).resolve().parents[1]
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -52,7 +54,6 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="VulnTrack AI", lifespan=lifespan)
-ensure_schema(engine)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

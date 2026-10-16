@@ -6,7 +6,7 @@ import {
   readJwtPayload,
 } from "@/lib/workspaces";
 
-const BACKEND_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8001";
+const BACKEND_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8001").trim();
 const COOKIE_SECURE =
   process.env.NEXT_PUBLIC_AUTH_COOKIE_SECURE === "true" || process.env.NODE_ENV === "production";
 
@@ -193,29 +193,55 @@ async function handleAuthResponse(request, backendPath, backendResponse) {
   return response;
 }
 
+async function fetchBackendOrRespond(request, backendPath, token = "") {
+  try {
+    return await fetchBackend(request, backendPath, token);
+  } catch (error) {
+    void error;
+    return NextResponse.json(
+      {
+        detail: `Cannot reach the backend at ${BACKEND_BASE_URL}. Start the FastAPI server and try again.`,
+      },
+      { status: 503 },
+    );
+  }
+}
+
 async function proxyRequest(request, context) {
   const params = await context.params;
   const backendPath = `/${(params?.path || []).join("/")}`;
   const { accessToken, refreshToken } = readRequestTokens(request);
 
   if (backendPath === "/auth/login" || backendPath === "/auth/register") {
-    const backendResponse = await fetchBackend(request, backendPath);
+    const backendResponse = await fetchBackendOrRespond(request, backendPath);
+    if (backendResponse instanceof NextResponse) {
+      return backendResponse;
+    }
     return handleAuthResponse(request, backendPath, backendResponse);
   }
 
   if (backendPath === "/auth/refresh") {
     const token = refreshToken || accessToken;
-    const backendResponse = await fetchBackend(request, backendPath, token);
+    const backendResponse = await fetchBackendOrRespond(request, backendPath, token);
+    if (backendResponse instanceof NextResponse) {
+      return backendResponse;
+    }
     return handleAuthResponse(request, backendPath, backendResponse);
   }
 
   if (backendPath === "/auth/logout") {
     const token = refreshToken || accessToken;
-    const backendResponse = await fetchBackend(request, backendPath, token);
+    const backendResponse = await fetchBackendOrRespond(request, backendPath, token);
+    if (backendResponse instanceof NextResponse) {
+      return backendResponse;
+    }
     return handleAuthResponse(request, backendPath, backendResponse);
   }
 
-  const backendResponse = await fetchBackend(request, backendPath, accessToken);
+  const backendResponse = await fetchBackendOrRespond(request, backendPath, accessToken);
+  if (backendResponse instanceof NextResponse) {
+    return backendResponse;
+  }
   if (backendResponse.status !== 401 || !refreshToken) {
     return buildNextResponseFromBackend(backendResponse);
   }

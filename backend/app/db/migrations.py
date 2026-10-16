@@ -4,10 +4,13 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
+from backend.app.core.security import hash_password
 from backend.app.models.organization import Organization
 from backend.app.models.role import Role
 from backend.app.services.organization_service import DEFAULT_ORGANIZATION_NAME, get_or_create_organization_by_name
 from backend.app.services.rbac_service import backfill_users_with_roles, seed_default_roles
+
+LEGACY_USER_PASSWORD = "LegacyUserMustReset!"
 
 
 def apply_organization_foundation_migration(engine: Engine) -> None:
@@ -38,6 +41,9 @@ def apply_organization_foundation_migration(engine: Engine) -> None:
         with engine.begin() as connection:
             connection.execute(text("ALTER TABLE users ADD COLUMN department VARCHAR(255)"))
 
+    _ensure_user_auth_columns(engine)
+    user_columns = {column["name"] for column in inspect(engine).get_columns("users")}
+
     _ensure_default_legacy_organization(engine)
     _backfill_users_without_organization(engine)
     if engine.dialect.name == "postgresql":
@@ -55,6 +61,54 @@ def _ensure_default_legacy_organization(engine: Engine) -> None:
         if db.scalar(text("SELECT 1 FROM organizations LIMIT 1")) is not None:
             return
         get_or_create_organization_by_name(db, DEFAULT_ORGANIZATION_NAME)
+
+
+def _ensure_user_auth_columns(engine: Engine) -> None:
+    inspector = inspect(engine)
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    added_email = "email" not in user_columns
+    added_password_hash = "password_hash" not in user_columns
+
+    if added_email:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR(255)"))
+    if added_password_hash:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"))
+
+    if not added_email and not added_password_hash:
+        return
+
+    legacy_password_hash = hash_password(LEGACY_USER_PASSWORD)
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    with session_factory() as db:
+        pending_users = db.execute(
+            text("SELECT id FROM users WHERE email IS NULL OR password_hash IS NULL ORDER BY id ASC")
+        ).fetchall()
+        for (user_id,) in pending_users:
+            db.execute(
+                text(
+                    """
+                    UPDATE users
+                    SET email = COALESCE(email, :email),
+                        password_hash = COALESCE(password_hash, :password_hash)
+                    WHERE id = :user_id
+                    """
+                ),
+                {
+                    "user_id": user_id,
+                    "email": f"legacy-{user_id}@vulntrack.local",
+                    "password_hash": legacy_password_hash,
+                },
+            )
+        db.commit()
+
+    with engine.begin() as connection:
+        connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
+        if added_email:
+            connection.execute(text("ALTER TABLE users ALTER COLUMN email SET NOT NULL"))
+        if added_password_hash:
+            connection.execute(text("ALTER TABLE users ALTER COLUMN password_hash SET NOT NULL"))
 
 
 def _backfill_users_without_organization(engine: Engine) -> None:

@@ -294,7 +294,7 @@ def _find_cached_file_scan(db: Session, file_sha256: str) -> Scan | None:
             Scan.target_type == ScanTargetType.FILE,
             ScanResult.sha256 == file_sha256,
         )
-        .order_by(ScanResult.created_at.desc())
+        .order_by(ScanResult.created_at.desc(), ScanResult.id.desc())
     )
 
 
